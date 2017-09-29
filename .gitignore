@@ -1,5 +1,4 @@
 .idea/
-config/config.json
 config/config.js
 data/
 node_modules/
