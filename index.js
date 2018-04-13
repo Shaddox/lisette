@@ -9,6 +9,7 @@ const Discord = require("discord.js");
 const { promisify } = require("util");
 const readdir = promisify(require("fs").readdir);
 const Enmap = require("enmap");
+const EnmapLevel = require("enmap-level");
 
 // This is your client. Some people call it `bot`, some people call it `self`,
 // some might call it `cootchie`. Either way, when you see `client.something`,
@@ -16,9 +17,12 @@ const Enmap = require("enmap");
 const client = new Discord.Client();
 
 // Here we load the config file that contains our token and our prefix values.
-client.config = require("./config/config.js");
+client.config = require("./config.js");
 // client.config.token contains the bot's token
 // client.config.prefix contains the message prefix
+
+// Require our logger
+client.logger = require("./util/Logger");
 
 // Let's start by getting some useful functions that we'll use throughout
 // the bot, like logs and elevation features.
@@ -32,51 +36,43 @@ client.aliases = new Enmap();
 // Now we integrate the use of Evie's awesome Enhanced Map module, which
 // essentially saves a collection to disk. This is great for per-server configs,
 // and makes things extremely easy for this purpose.
-client.settings = new Enmap({name: "settings", persistent: true});
+client.settings = new Enmap({provider: new EnmapLevel({name: "settings"})});
 
 // We're doing real fancy node 8 async/await stuff here, and to do that
 // we need to wrap stuff in an anonymous function. It's annoying but it works.
 
 const init = async () => {
 
-    // Here we load **commands** into memory, as a collection, so they're accessible
-    // here and everywhere else.
-    const cmdFiles = await readdir("./commands/");
-    client.log("log", `Loading a total of ${cmdFiles.length} commands.`);
-    cmdFiles.forEach(f => {
-        try {
-            const props = require(`./commands/${f}`);
-            if (f.split(".").slice(-1)[0] !== "js") return;
-            client.log("log", `Loading Command: ${props.help.name}. 👌`);
-            client.commands.set(props.help.name, props);
-            props.conf.aliases.forEach(alias => {
-                client.aliases.set(alias, props.help.name);
-            });
-        } catch (e) {
-            client.log(`Unable to load command ${f}: ${e}`);
-        }
-    });
+  // Here we load **commands** into memory, as a collection, so they're accessible
+  // here and everywhere else.
+  const cmdFiles = await readdir("./commands/");
+  client.logger.log(`Loading a total of ${cmdFiles.length} commands.`);
+  cmdFiles.forEach(f => {
+    if (!f.endsWith(".js")) return;
+    const response = client.loadCommand(f);
+    if (response) console.log(response);
+  });
 
-    // Then we load events, which will include our message and ready event.
-    const evtFiles = await readdir("./events/");
-    client.log("log", `Loading a total of ${evtFiles.length} events.`);
-    evtFiles.forEach(file => {
-        const eventName = file.split(".")[0];
-        const event = require(`./events/${file}`);
-        // This line is awesome by the way. Just sayin'.
-        client.on(eventName, event.bind(null, client));
-        delete require.cache[require.resolve(`./events/${file}`)];
-    });
+  // Then we load events, which will include our message and ready event.
+  const evtFiles = await readdir("./events/");
+  client.logger.log(`Loading a total of ${evtFiles.length} events.`);
+  evtFiles.forEach(file => {
+    const eventName = file.split(".")[0];
+    const event = require(`./events/${file}`);
+    // This line is awesome by the way. Just sayin'.
+    client.on(eventName, event.bind(null, client));
+    delete require.cache[require.resolve(`./events/${file}`)];
+  });
 
-    // Generate a cache of client permissions for pretty perms
-    client.levelCache = {};
-    for (let i = 0; i < client.config.permLevels.length; i++) {
-        const thisLevel = client.config.permLevels[i];
-        client.levelCache[thisLevel.name] = thisLevel.level;
-    }
+  // Generate a cache of client permissions for pretty perms
+  client.levelCache = {};
+  for (let i = 0; i < client.config.permLevels.length; i++) {
+    const thisLevel = client.config.permLevels[i];
+    client.levelCache[thisLevel.name] = thisLevel.level;
+  }
 
-    // Here we login the client.
-    client.login(client.config.token);
+  // Here we login the client.
+  client.login(client.config.token);
 
 // End top-level async/await function.
 };
