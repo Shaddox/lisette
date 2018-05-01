@@ -11,11 +11,30 @@ module.exports = (client, message) => {
   // If there is no guild, get default conf (DMs)
   const settings = message.settings = client.getGuildSettings(message.guild);
 
+
+  //silently listening to messages that contain embeds and stores them
+  const guildId = message.guild.id;
+  if (typeof client.resources[guildId] === 'undefined') {
+    client.resources[guildId] = [];
+  }
+
+  // put embeds in data structure
+  for (const embed of message.embeds) {
+    let dataArtifact = {"resource" : embed.url};
+    client.resources[guildId].push(dataArtifact);
+  }
+
+  //put attachment links in data structure
+  message.attachments.forEach( function(value, key, map) {
+    let dataArtifact = {"resource" : value.url};
+    client.resources[guildId].push(dataArtifact);
+  });
+
   // Also good practice to ignore any message that does not start with our prefix,
   // which is set in the configuration file.
+  // Here we separate our "command" name, and our "arguments" for the command.
   if (message.content.indexOf(settings.prefix) !== 0) return;
 
-  // Here we separate our "command" name, and our "arguments" for the command.
   // e.g. if we have the message "+say Is this the real life?" , we'll get the following:
   // command = say
   // args = ["Is", "this", "the", "real", "life?"]
@@ -50,7 +69,7 @@ module.exports = (client, message) => {
   // To simplify message arguments, the author's level is now put on level (not member so it is supported in DMs)
   // The "level" command module argument will be deprecated in the future.
   message.author.permLevel = level;
-  
+
   message.flags = [];
   while (args[0] && args[0][0] === "-") {
     message.flags.push(args.shift().slice(1));

@@ -32,6 +32,8 @@ require("./modules/functions.js")(client);
 // catalogued, listed, etc.
 client.commands = new Enmap();
 client.aliases = new Enmap();
+client.resources = [];
+
 
 // Now we integrate the use of Evie's awesome Enhanced Map module, which
 // essentially saves a collection to disk. This is great for per-server configs,
@@ -73,7 +75,6 @@ const init = async () => {
 
   // Here we login the client.
   client.login(client.config.token);
-
 // End top-level async/await function.
 };
 
